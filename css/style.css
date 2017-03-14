@@ -1,0 +1,36 @@
+.column5 {
+	width: 100%;
+}
+
+.column5 span{ 
+	display:inline-block;
+}
+
+.user_id {
+	width: 16%;
+} 
+
+.name {
+	width: 27%;
+}
+
+.access {
+	width: 10%;
+}
+
+.modify {
+	width: 28%;
+}
+
+.button {
+	width: 10%;
+}
+
+.header {
+	background-color:#dddddd;
+	font-weight: bold;
+}
+
+.odd {
+	background-color:#efefef;
+}
