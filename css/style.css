@@ -1,29 +1,14 @@
-.column5 {
-	width: 100%;
+.center {
+	text-align: center;
 }
 
-.column5 span{ 
-	display:inline-block;
+table {
+	border-spacing:0;
 }
 
-.user_id {
-	width: 16%;
-} 
-
-.name {
-	width: 27%;
-}
-
-.access {
-	width: 10%;
-}
-
-.modify {
-	width: 28%;
-}
-
-.button {
-	width: 10%;
+td {
+	padding-right: 1em;
+	padding-left: 1em;
 }
 
 .header {

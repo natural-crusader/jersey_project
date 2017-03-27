@@ -1,13 +1,27 @@
 <?php
-error_reporting(0);
-//error_reporting(E_ALL); ini_set('display_errors', 1);
-//mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 /** This app should access a MySQL database 
 */
 
 class DB {
-	public $link;
+	private $link; // database connection link
+	static $dtformat_both = "Y-m-d H:i:s"; // format for database storage
 
+	/**
+	 * Creates a link the the desired database and provides interface for accessing said database.
+	 *
+	 * @param string $host 
+	 *   The host of the database
+	 * @param string $user
+	 *   The username for the database
+	 * @param string $pass
+	 *   The password for the database
+	 * @param string $db
+	 *   The database identifier
+	 *
+	 * @return DB class item or exit on fail
+	 *  
+	 */
 	function __construct($host, $user, $pass, $db) {
 		$this->link = new mysqli($host, $user, $pass, $db);
 		if($this->link->connect_errno) {
@@ -16,95 +30,136 @@ class DB {
 		}
 	}
 
-	/* 
-		$credentials = {host, user, pass, db}
-	*/
-	public static function getConnection($credentials){
-		$instance = new self();
-		$instance->link = new mysqli($credentials['host'], $credentials['user'], $credentials['pass'], $credentials['db']);
-        return $instance;
-	}
-
-	public function rawQuery($query) {
-		if(!$this->link) return false;
-		if($this->link->query($query) === true) {
-			return true;	
+	protected function _CreateTable($sql) 
+		{
+			return $this->link->query($sql) === true;
 		}
-		return false;
-	}
 
-	// load by id
-	public function load($object) {
-		if(!$this->link) return false;
+	/**
+	 * inserts data into a table
+	 *
+	 * @param string $table 
+	 *   The table to insert into
+	 * @param assoc $data
+	 *   columns and values to insert
+	 *
+	 * @return true on successful insertion else false on fail
+	 *  
+	 */
+	protected function TableInsert($table, $data) 
+		{
+			$keys = array_keys($data);
+			$keys_str = '`'.implode('`,`', $keys).'`';
+			
+			$values = array_values($data);
+			$values_str = "'".implode("','", $values)."'";
 
-		if(isset($object->_id)) {
-			$id = (int) $object->_id;
-			$table = get_class($object);
-			$query = "select * from {$table} where _id = {$id}";
-			if ($result = $this->link->query($query,  MYSQLI_USE_RESULT)) {
-				$obj = $result->fetch_assoc();
-				$result->close();
-				return $obj;
-			} else {
-				return false;
-			}
+			$sql = "insert into {$table} ($keys_str) values ($values_str)";
+
+			if($this->link->query($sql) === true)
+				return true;
+			return false;
 		}
-	}
 
-	/* Save the object, insert or update depending on value of _id */
-	public function save($object) {
-		if(!$this->link) return false; // no connection
-		
-		$data = get_object_vars($object);
+	/**
+	 * update access count and modify datetime of a user row
+	 *
+	 * @param string $table 
+	 *   The table to insert into
+	 * @param assoc $user
+	 *   must contain user_id and modify_dt to udpate
+	 *   you can pass in a value of raw sql by using assoc with ['raw'=> value]
+	 * @param assoc $where
+	 *   column => id, value => id
+	 * @return new access_ct on successful update else false on fail
+	 *  
+	 */
+	protected function TableUpdate($table, $user, $where) 
+		{
+			$sql = "update `{$table}` set ";
+			foreach($user as $key=>$value)
+				{
+					if(is_array($value))
+						{
+							$sql.="{$key} = {$value['raw']},";
+						} else 
+						{
+							$sql.= "{$key} = '{$value}',";
+						}
+				}
 
-		// remove id if null for insert vs update
-		if($object->_id == null) unset($data['_id']);
-		
-		$class = get_class($object);
-		$table = $class::TABLE;
+			$sql = substr($sql, 0, -1);
 
-		if($object->_id == null){
-			$r_columns = array_keys($data);
-			$columns = "`".implode('`, `', array_keys($data))."`";
-			$r_value = [];
-			foreach(array_values($data) as $d) {
-				// escaping values - we don't know if they are user input or not
-				$r_value[] = mysqli_escape_string($this->link, $d);
+			$sql .= " where {$where['column']} = '{$where['value']}'";
+			
+			if($this->link->query($sql) === true) {
+				// get the new access_ct
+				return true;
 			}
-			$values = "'".implode("', '", array_values($r_value))."'";
-
-			$query = "insert into {$table} ({$columns}) values ({$values})";
-		} else {
-			$query = "update {$table} set ";
-			foreach($data as $key=>$value) {
-				// escaping values - we don't know if they are user input or not
-				$query.="$key='".mysqli_escape_string($this->link, $value)."',";
-			}
-			$query = substr($query, 0, -1);
-			$query.=" where _id = {$data['_id']} limit 1";
+			return false;
 		}
-		
-		if($this->link->query($query) === true)
-			return true;
-		return false;
-	}
 
-	public function getItems($class) {
-		if(!$this->link) return false;
-		$table = $class::TABLE;
-		$query = "select * from {$table}";
-		if ($result = $this->link->query($query,  MYSQLI_USE_RESULT)) {
+	/**
+	 * forms an SQL string ready to be queried
+	 *
+	 * @param string $table 
+	 *   table to run the sql select on
+	 * @param assoc $options
+	 *   options of the select statement
+	 * @param assoc $columns
+	 *   mapping of keys to columns
+	 * 
+	 * @return selected items from the table
+	 *  
+	 */
+	protected function TableSelect($table, $options_assoc, $columns_assoc)
+		{
+			$select_columns = implode(',', $columns_assoc);
+			$select_options = '';
+			if($options_assoc && !empty($options_assoc)) 
+				{
+					$select_options = 'where';
+					foreach($options_assoc as $key => $value) 
+						{
+							$select_options .= " {$key} = '{$value}',";
+						}
+					$select_options = substr($select_options, 0, -1);
+				}
+
+			return "select {$select_columns} from {$table} {$select_options};";
+		}
+
+	/**
+	 * Creates a link the the desired database and provides interface for accessing said database.
+	 *
+	 * @param string $table 
+	 *   table to run the sql select on
+	 * @param assoc $options
+	 *   options of the select statement
+	 * @param assoc $columns
+	 *   mapping of keys to columns
+	 * 
+	 * @return selected items from the table
+	 *  
+	 */
+	protected function QueryResultRows($sql_str) 
+		{
 			$results = [];
-			while ($obj = $result->fetch_object()) {
-				$results[] = $obj;
-		    }
-			$result->close();
+			
+			if ($result = $this->link->query($sql_str,  MYSQLI_USE_RESULT)) 
+				{
+					while ($assoc = $result->fetch_assoc()) 
+						$results[] = $assoc;
+
+					$result->close();
+			    }
+
 			return $results;
 		}
-		
-		return false;
-	}
 
+	/**
+	 * close the object database link on destroy / exit
+	 */
 	function __destruct() {
 		$this->link->close();
 	}
