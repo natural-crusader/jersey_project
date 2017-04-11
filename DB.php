@@ -22,15 +22,16 @@ class DB {
 	 * @return DB class item or exit on fail
 	 *  
 	 */
-	function __construct($host, $user, $pass, $db) {
-		$this->link = new mysqli($host, $user, $pass, $db);
-		if($this->link->connect_errno) {
-			echo 'Error: Unable to connect to MySQL. ' . $this->link->connect_error;
-		    exit();
+	function __construct($host, $user, $pass, $db) 
+		{
+			$this->link = new mysqli($host, $user, $pass, $db);
+			if($this->link->connect_errno) {
+				echo 'Error: Unable to connect to MySQL. ' . $this->link->connect_error;
+			    exit();
+			}
 		}
-	}
 
-	protected function _CreateTable($sql) 
+	protected function rawSQL($sql) 
 		{
 			return $this->link->query($sql) === true;
 		}
@@ -160,7 +161,8 @@ class DB {
 	/**
 	 * close the object database link on destroy / exit
 	 */
-	function __destruct() {
-		$this->link->close();
-	}
+	function __destruct() 
+		{
+			$this->link->close();
+		}
 }

@@ -126,9 +126,9 @@ class Jersey_Project extends DB
 			}
 
 		/**
-		 * Creates the table if not exists
+		 * Creates the table if not exists -- typically in a migration script based on version control
 		 */
-		function CreateTable() {
+		function CreateUserTable() {
 			$sql = <<<EOT
 CREATE TABLE IF NOT EXISTS `User` 
 	(
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS `User`
 	) 
 	ENGINE = InnoDB;
 EOT;
-			return $this->_CreateTable($sql);
+			return $this->rawSQL($sql);
 		}
 
 	}

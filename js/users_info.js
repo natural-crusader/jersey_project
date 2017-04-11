@@ -10,7 +10,7 @@
  *	}
  */
 
-// could not find "Class"
+// required by project
 var Class = {};
 
 Class.UsersInfoPage = function(params)
@@ -25,7 +25,7 @@ Class.UsersInfoPage = function(params)
 				params_default = {fadin_ms: 250};
 
 				UsersInfoPage = this;
-				// UsersInfoPage.Initialize = Initialize;
+				// UsersInfoPage.Initialize = Initialize; // used when merging all requests into one call
 				Initialize();
 
 				RequestResponse = new Class.RequestResponse();
@@ -36,8 +36,10 @@ Class.UsersInfoPage = function(params)
 				info_get_command(RequestResponse);
 			}
 
+		// method not required in this case but done to show location of things done after callback from single AJAX call
 		function Initialize()
 			{
+				// hard coded or this example but actually retreived from the server to adjust for language differences
 				idents_text = 
 					{
 						'/user/info::UsersInfoPage::forms.h3.title' : 'Users',
@@ -153,6 +155,8 @@ Class.RequestResponse = function()
 			}
 			
 		// not sending any data, just getting update no need to POST
+		// this will typically append everything to 1 ajax call and load all requested information in the 
+		// least possible requests.
 		function Append(get_request, response_callback) 
 			{
 				var url = 'user_api.php';
